@@ -29,12 +29,22 @@ import * as Papa from "papaparse";
 /** @typedef {{ ts:number, user:string, cardId:string, answeredName:string, answeredPrice:number, correct:boolean, nameOk:boolean, priceOk:boolean, correctName:string, correctPrice:number }} Result */
 
 // ---------- ユーティリティ ----------
-const toHalf = (s="") => s
-  .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
-  .replace(/[，]/g, ",")
-  .replace(/[＋]/g, "+");
-const norm = (s="") => toHalf(s).trim().toLowerCase().replace(/[\s　]/g, "");
-const parsePrice = (v) => {
+const toHalf = (s: string = ""): string =>
+  s
+    .replace(/[０-９]/g, (d: string) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
+    .replace(/[，]/g, ",")
+    .replace(/[＋]/g, "+");
+
+const norm = (s: string = ""): string =>
+  toHalf(s).trim().toLowerCase().replace(/[\s　]/g, "");
+
+const parsePrice = (v: unknown): number => {
+  if (v === null || v === undefined) return NaN;
+  const s = toHalf(String(v)).replace(/[,円]/g, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+};
+
   if (v === null || v === undefined) return NaN;
   const s = toHalf(String(v)).replace(/[,円]/g, "");
   const n = Number(s);
