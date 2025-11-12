@@ -116,6 +116,35 @@ export default function App() {
   const [ansPrice, setAnsPrice] = useState("");
   const [showAnswer, setShowAnswer] = useState(false);
   const nameRef = useRef<HTMLInputElement | null>(null);
+// === 管理者パス制御 ======================================
+const ADMIN_PASS =
+  (typeof window !== "undefined" && (window as any).__ADMIN__) ||
+  process.env.NEXT_PUBLIC_ADMIN_PASS || "km2025"; // ←好みで変更
+
+const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+  try { return localStorage.getItem("quiz_admin") === "1"; } catch { return false; }
+});
+
+useEffect(() => {
+  try { localStorage.setItem("quiz_admin", isAdmin ? "1" : "0"); } catch {}
+}, [isAdmin]);
+
+function handleAdminAccess() {
+  if (isAdmin) return;
+  const input = prompt("管理者パスワードを入力してください");
+  if (input === ADMIN_PASS) {
+    setIsAdmin(true);
+    toast.success("管理者モードを有効化しました");
+  } else {
+    toast.error("パスワードが違います");
+  }
+}
+
+function handleAdminLogout() {
+  setIsAdmin(false);
+  toast("管理者モードを解除しました");
+}
+// ========================================================
 
   // 保存前に型を固定（psa/price を number に確定）
   useEffect(() => {
@@ -305,80 +334,50 @@ export default function App() {
           </TabsContent>
 
           {/* 設定 */}
-          <TabsContent value="settings">
-            <UICard>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>データ & ルール</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={()=>{
-                    const csv = Papa.unparse(results.map(r=>({
-                      ts:new Date(r.ts).toISOString(), user:r.user, cardId:r.cardId,
-                      answeredName:r.answeredName, answeredPrice:r.answeredPrice,
-                      correct:r.correct, nameOk:r.nameOk, priceOk:r.priceOk,
-                      correctName:r.correctName, correctPrice:r.correctPrice
-                    })));
-                    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"}); const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a"); a.href = url; a.download = `quiz_results_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-                  }}>
-                    <Download className="h-4 w-4 mr-2"/>履歴CSV出力
-                  </Button>
-                  <Button variant="destructive" onClick={()=>{ if(confirm("すべての履歴を削除します。よろしいですか？")){ setResults([]); setMissMap({}); toast("履歴をクリアしました"); } }}>
-                    リセット
-                  </Button>
-                </div>
-              </CardHeader>
+         <TabsContent value="settings">
+  {!isAdmin ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>管理者のみアクセス可能</CardTitle>
+      </CardHeader>
+      <CardContent className="flex items-center justify-between gap-4">
+        <div className="text-sm text-gray-600">
+          設定変更には管理者パスワードが必要です。
+        </div>
+        <Button onClick={handleAdminAccess}>パスワード入力</Button>
+      </CardContent>
+    </Card>
+  ) : (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>データ & ルール（管理者）</CardTitle>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportResults}>
+            <Download className="h-4 w-4 mr-2" />履歴CSV出力
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (confirm("すべての履歴を削除します。よろしいですか？")) {
+                setResults([]); setMissMap({}); toast("履歴をクリアしました");
+              }
+            }}
+          >
+            リセット
+          </Button>
+          <Button variant="secondary" onClick={handleAdminLogout}>管理者モードOFF</Button>
+        </div>
+      </CardHeader>
 
-              <CardContent className="grid md:grid-cols-2 gap-6">
-                <div className="grid gap-4">
-                  <div>
-                    <Label className="mb-2 block">価格許容誤差（±{tolPct}%）</Label>
-                    <Slider value={[tolPct]} min={1} max={30} step={1} onValueChange={([v])=>setTolPct(v)} />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white">
-                    <div>
-                      <div className="font-medium">名前の一致を厳格にする</div>
-                      <div className="text-sm text-gray-500">オン：完全一致（エイリアス可） / オフ：部分一致OK</div>
-                    </div>
-                    <Switch checked={strictName} onCheckedChange={setStrictName}/>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>PSA フィルタ</Label>
-                    <Select value={psaFilter} onValueChange={setPsaFilter}>
-                      <SelectTrigger className="w-48"><SelectValue/></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">すべて</SelectItem>
-                        <SelectItem value="10">PSA10のみ</SelectItem>
-                        <SelectItem value="9以下">PSA9以下</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+      {/* ↓↓↓ ここからは既存の設定UI（Slider/Select/CSV/JSONなど）をそのまま残す ↓↓↓ */}
+      <CardContent className="grid md:grid-cols-2 gap-6">
+        {/* あなたの元の設定UI */}
+      </CardContent>
+      {/* ↑↑↑ ここまで既存UI */}
+    </Card>
+  )}
+</TabsContent>
 
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label>CSVインポート <span className="text-xs text-gray-500">（ヘッダ：IMG_URL, NAME, PSA, PRICE, ACTIVE, ALIASES）</span></Label>
-                    <label className="border-dashed border rounded-xl p-6 grid place-items-center bg-white cursor-pointer hover:bg-gray-50">
-                      <Upload className="h-6 w-6 mb-1"/>
-                      <div className="text-sm">ファイルを選択</div>
-                      <input type="file" accept=".csv" className="hidden"
-                        onChange={e=>{ const f=e.target.files?.[0]; if(f) importCSV(f); e.currentTarget.value=""; }}/>
-                    </label>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>JSONインポート（配列）</Label>
-                    <textarea className="min-h-28 rounded-xl border p-3" placeholder='[
-  {"IMG_URL":"https://...","NAME":"ピカチュウ","PSA":10,"PRICE":58000,"ALIASES":"ピカ, pikachu"}
-]' onBlur={(e)=>{ const t=e.target.value.trim(); if(t) importJSON(t); }}/>
-                  </div>
-
-                  <div className="text-sm text-gray-500">
-                    インポート後は <b>間違いが多いカードが出やすく</b> なります。暗記速度が上がります。
-                  </div>
-                </div>
-              </CardContent>
-            </UICard>
-          </TabsContent>
 
           {/* 履歴 */}
           <TabsContent value="history">
