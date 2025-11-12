@@ -217,7 +217,7 @@ export default function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Trophy className="h-6 w-6" />
-            <h1 className="text-2xl md:text-3xl font-bold">カード相場クイズ v-verify</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">カード相場クイズ</h1>
           </div>
           <div className="flex items-center gap-2">
             <User2 className="h-5 w-5" />
