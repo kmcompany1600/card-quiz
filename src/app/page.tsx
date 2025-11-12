@@ -51,11 +51,44 @@ const uid = (): string => Math.random().toString(36).slice(2);
 
 
 // ---------- ストレージ ----------
+type Card = {
+  id: string;
+  name: string;
+  psa: string;
+  price: number;
+  img: string;
+};
+
+type Result = {
+  id: string;
+  correct: boolean;
+  date: string;
+};
+
+type Store = {
+  user: string;
+  cards: Card[];
+  missMap: Record<string, number>;
+  results: Result[];
+  tolPct: number;
+  strictName: boolean;
+  psaFilter: "all" | "10" | "9以下";
+};
+
 const LS_KEY = "card-quiz-v1";
-function loadStore() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; }
+
+function loadStore(): Partial<Store> {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  } catch {
+    return {};
+  }
 }
-function saveStore(data) { localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+
+function saveStore(data: Partial<Store>): void {
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
 
 // ---------- 初期デモデータ ----------
 const demoCards = /** @type {Card[]} */ ([
