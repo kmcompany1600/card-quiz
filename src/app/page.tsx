@@ -54,9 +54,11 @@ const uid = (): string => Math.random().toString(36).slice(2);
 type Card = {
   id: string;
   name: string;
-  psa: string;
+  psa: number;          // ← 数値に変更（10 など）
   price: number;
   img: string;
+  active?: boolean;     // ← CSV等で使っていたら拾えるように
+  aliases?: string[];   // ← 名前の別名があれば
 };
 
 type Result = {
@@ -88,7 +90,6 @@ function loadStore(): Partial<Store> {
 function saveStore(data: Partial<Store>): void {
   localStorage.setItem(LS_KEY, JSON.stringify(data));
 }
-
 
 // ---------- 初期デモデータ ----------
 const demoCards = /** @type {Card[]} */ ([
