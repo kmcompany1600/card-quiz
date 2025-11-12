@@ -92,11 +92,12 @@ function saveStore(data: Partial<Store>): void {
 }
 
 // ---------- 初期デモデータ ----------
-const demoCards = /** @type {Card[]} */ ([
+const demoCards: Card[] = [
   { id: uid(), img: "https://images.pokemontcg.io/swsh45/sv107_hires.png", name: "リザードン VMAX", psa: 10, price: 58000, active: true, aliases:["リザバナ","charizard"] },
-  { id: uid(), img: "https://images.pokemontcg.io/base1/4_hires.png", name: "ピカチュウ プロモ", psa: 10, price: 32000, active: true, aliases:["pikachu","プロモ"] },
-  { id: uid(), img: "https://images.pokemontcg.io/base1/2_hires.png", name: "フシギバナ", psa: 10, price: 42000, active: true, aliases:["venusaur","バナ"] },
-]);
+  { id: uid(), img: "https://images.pokemontcg.io/base1/4_hires.png",    name: "ピカチュウ プロモ", psa: 10, price: 32000, active: true, aliases:["pikachu","プロモ"] },
+  { id: uid(), img: "https://images.pokemontcg.io/base1/2_hires.png",    name: "フシギバナ",       psa: 10, price: 42000, active: true, aliases:["venusaur","バナ"] },
+];
+``
 
 // --------- 重み付きランダム ---------
 function weightedPick<T>(items: T[], weights: number[]): T {
@@ -112,25 +113,49 @@ function weightedPick<T>(items: T[], weights: number[]): T {
   // 端数の安全策
   return items[items.length - 1];
 }
+// 入力（CSV/JSON/過去保存）を厳密な Card に変換
+function toCard(row: any): Card {
+  return {
+    id: String(row.id ?? uid()),
+    name: String(row.NAME ?? row.name ?? ""),
+    psa: Number(row.PSA ?? row.psa ?? 10),
+    price: Number(parsePrice(row.PRICE ?? row.price ?? 0)),
+    img: String(row.IMG_URL ?? row.img ?? row.image ?? ""),
+    active: String(row.ACTIVE ?? row.active ?? "true").toLowerCase() !== "false",
+    aliases: String(row.ALIASES ?? row.aliases ?? "")
+      .split(/[,、\s]+/)
+      .map((s: string) => s.trim())
+      .filter(Boolean),
+  };
+}
 
 
 export default function App(){
-  // 状態
-  const [user, setUser] = useState( () => loadStore().user || "社員A" );
-  const [cards, setCards] = useState( /** @type {Card[]} */ () => loadStore().cards || demoCards );
-  const [missMap, setMissMap] = useState( /** @type {Record<string, number>} */ () => loadStore().missMap || {} );
-  const [results, setResults] = useState( /** @type {Result[]} */ () => loadStore().results || [] );
-  const [tolPct, setTolPct] = useState( () => loadStore().tolPct ?? 10 );
-  const [strictName, setStrictName] = useState( () => loadStore().strictName ?? false );
-  const [psaFilter, setPsaFilter] = useState( /** @type{"all"|"10"|"9以下"} */ () => loadStore().psaFilter || "all" );
-  const [current, setCurrent] = useState( /** @type {Card|null} */ (null) );
-  const [ansName, setAnsName] = useState("");
-  const [ansPrice, setAnsPrice] = useState("");
-  const [showAnswer, setShowAnswer] = useState(false);
-  const nameRef = useRef(null);
+// 状態
+const [user, setUser] = useState(() => loadStore().user || "社員A");
 
-  // 永続化
-  useEffect(()=>{ saveStore({ user, cards, missMap, results, tolPct, strictName, psaFilter }); }, [user, cards, missMap, results, tolPct, strictName, psaFilter]);
+// LocalStorageに古い型が残っていても必ず Card[] に整形
+const [cards, setCards] = useState<Card[]>(() => {
+  const s = loadStore();
+  const arr = Array.isArray(s.cards) ? (s.cards as any[]).map(toCard) : demoCards;
+  return arr;
+});
+
+const [missMap, setMissMap]   = useState<Record<string, number>>(() => loadStore().missMap || {});
+const [results, setResults]   = useState<Result[]>(() => (loadStore().results as any) || []);
+const [tolPct, setTolPct]     = useState(() => loadStore().tolPct ?? 10);
+const [strictName, setStrictName] = useState(() => loadStore().strictName ?? false);
+const [psaFilter, setPsaFilter]   = useState<"all"|"10"|"9以下">(() => (loadStore().psaFilter as any) || "all");
+const [current, setCurrent]   = useState<Card|null>(null);
+const [ansName, setAnsName]   = useState("");
+const [ansPrice, setAnsPrice] = useState("");
+const [showAnswer, setShowAnswer] = useState(false);
+const nameRef = useRef<HTMLInputElement|null>(null);
+
+// 永続化（cards は厳密な Card[] として保存）
+useEffect(() => {
+  saveStore({ user, cards: cards as Card[], missMap, results, tolPct, strictName, psaFilter });
+}, [user, cards, missMap, results, tolPct, strictName, psaFilter]);
 
   // 出題ロジック
   const filtered = useMemo(()=>{
@@ -187,49 +212,35 @@ export default function App(){
   }
 
   // CSV / JSON インポート
-  function importCSV(file){
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (res) => {
-        try {
-          const rows = res.data || [];
-          const mapped = rows.map((r, i) => ({
-            id: uid(),
-            img: r.IMG_URL || r.img || r.image || "",
-            name: (r.NAME||r.name||"").toString(),
-            psa: r.PSA || r.psa || "",
-            price: parsePrice(r.PRICE||r.price||0),
-            active: String(r.ACTIVE||r.active||"true").toLowerCase() !== "false",
-            aliases: (r.ALIASES||r.aliases||"").toString().split(/[,、\s]+/).filter(Boolean)
-          })).filter(x => x.name && Number.isFinite(x.price));
-          if (!mapped.length) throw new Error("有効な行がありません");
-          setCards(mapped);
-          setMissMap({});
-          toast.success(`読み込み: ${mapped.length} 件`);
-          setCurrent(null); // 再出題
-        } catch(e){ toast.error("CSV読み込み失敗: "+ e.message); }
-      },
-      error: (e) => toast.error("CSV解析エラー: "+ e.message)
-    });
-  }
+ // CSV / JSON インポート
+function importCSV(file: File){
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (res: Papa.ParseResult<any>) => {
+      try {
+        const rows = (res.data || []) as any[];
+        const mapped: Card[] = rows.map(toCard).filter(x => x.name && Number.isFinite(x.price));
+        if (!mapped.length) throw new Error("有効な行がありません");
+        setCards(mapped); setMissMap({}); setCurrent(null);
+        toast.success(`読み込み: ${mapped.length} 件`);
+      } catch(e:any){ toast.error("CSV読み込み失敗: "+ e.message); }
+    },
+    error: (e: any) => toast.error("CSV解析エラー: "+ e.message)
+  });
+}
 
-  function importJSON(text){
-    try{
-      const arr = JSON.parse(text);
-      if (!Array.isArray(arr)) throw new Error("配列JSONを渡してください");
-      /** @type {Card[]} */
-      const mapped = arr.map(x=> ({
-        id: uid(), img: x.img||x.IMG_URL, name: x.name||x.NAME,
-        psa: x.psa||x.PSA, price: parsePrice(x.price||x.PRICE),
-        active: x.active ?? x.ACTIVE ?? true,
-        aliases: x.aliases || x.ALIASES || []
-      })).filter(x=> x.name && Number.isFinite(x.price));
-      if (!mapped.length) throw new Error("有効な行がありません");
-      setCards(mapped); setMissMap({}); setCurrent(null);
-      toast.success(`読み込み: ${mapped.length} 件`);
-    }catch(e){ toast.error("JSON読み込み失敗: "+ e.message); }
-  }
+function importJSON(text: string){
+  try{
+    const arr = JSON.parse(text);
+    if (!Array.isArray(arr)) throw new Error("配列JSONを渡してください");
+    const mapped: Card[] = (arr as any[]).map(toCard).filter(x => x.name && Number.isFinite(x.price));
+    if (!mapped.length) throw new Error("有効な行がありません");
+    setCards(mapped); setMissMap({}); setCurrent(null);
+    toast.success(`読み込み: ${mapped.length} 件`);
+  }catch(e:any){ toast.error("JSON読み込み失敗: "+ e.message); }
+}
+
 
   // エクスポート
   function exportResults(){
