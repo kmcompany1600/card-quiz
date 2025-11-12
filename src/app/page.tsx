@@ -49,6 +49,7 @@ const parsePrice = (v: unknown): number => {
 
 const uid = (): string => Math.random().toString(36).slice(2);
 
+
 // ---------- ストレージ ----------
 const LS_KEY = "card-quiz-v1";
 function loadStore() {
