@@ -411,7 +411,7 @@ export default function App() {
                     </div>
 
                     <div className="text-sm text-gray-500">
-                      インポート後は <b>間違いが多いカードが出やすく</b> なります。暗記速度が上がります。
+                      インポート後は <b>間違いが多いカードが出やすく</b> になります。暗記速度が上がります。
                     </div>
                   </div>
                 </CardContent>
@@ -422,7 +422,7 @@ export default function App() {
           {/* 履歴 */}
           <TabsContent value="history">
             <UICard>
-              <CardHeader><CardTitle>回答履歴（{user}）</CardTitle></CardHeader>
+              <CardHeader><CardTitle>回答履歴（{user}）</CardHeader></CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
