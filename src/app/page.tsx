@@ -152,9 +152,16 @@ const [ansPrice, setAnsPrice] = useState("");
 const [showAnswer, setShowAnswer] = useState(false);
 const nameRef = useRef<HTMLInputElement|null>(null);
 
-// 永続化（cards は厳密な Card[] として保存）
+// 永続化
 useEffect(() => {
-  saveStore({ user, cards: cards as Card[], missMap, results, tolPct, strictName, psaFilter });
+  // localStorage に保存する前に Card を整形して number に直す
+  const fixedCards = cards.map(c => ({
+    ...c,
+    psa: Number(c.psa ?? 10),
+    price: Number(c.price ?? 0),
+  })) as Card[];
+
+  saveStore({ user, cards: fixedCards, missMap, results, tolPct, strictName, psaFilter });
 }, [user, cards, missMap, results, tolPct, strictName, psaFilter]);
 
   // 出題ロジック
