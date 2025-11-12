@@ -97,14 +97,21 @@ const demoCards = /** @type {Card[]} */ ([
   { id: uid(), img: "https://images.pokemontcg.io/base1/2_hires.png", name: "フシギバナ", psa: 10, price: 42000, active: true, aliases:["venusaur","バナ"] },
 ]);
 
-// ---------- 重み付きランダム ----------
-function weightedPick(cards, weights) {
-  const total = weights.reduce((a,b)=>a+b,0);
-  const r = Math.random() * total;
-  let acc = 0;
-  for (let i=0;i<cards.length;i++) { acc += weights[i]; if (r <= acc) return cards[i]; }
-  return cards[cards.length-1];
+// --------- 重み付きランダム ---------
+function weightedPick<T>(items: T[], weights: number[]): T {
+  if (items.length !== weights.length || items.length === 0) {
+    throw new Error("weightedPick: items と weights の長さ不一致 or 空配列");
+  }
+  const total = weights.reduce((a: number, b: number) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  // 端数の安全策
+  return items[items.length - 1];
 }
+
 
 export default function App(){
   // 状態
