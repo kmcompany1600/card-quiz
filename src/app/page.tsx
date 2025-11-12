@@ -29,14 +29,16 @@ import * as Papa from "papaparse";
 /** @typedef {{ ts:number, user:string, cardId:string, answeredName:string, answeredPrice:number, correct:boolean, nameOk:boolean, priceOk:boolean, correctName:string, correctPrice:number }} Result */
 
 // ---------- ユーティリティ ----------
-const toHalf = (s: string = ""): string =>
-  s
+const toHalf = (s: string = ""): string => {
+  return s
     .replace(/[０-９]/g, (d: string) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
     .replace(/[，]/g, ",")
     .replace(/[＋]/g, "+");
+};
 
-const norm = (s: string = ""): string =>
-  toHalf(s).trim().toLowerCase().replace(/[\s　]/g, "");
+const norm = (s: string = ""): string => {
+  return toHalf(s).trim().toLowerCase().replace(/[\s　]/g, "");
+};
 
 const parsePrice = (v: unknown): number => {
   if (v === null || v === undefined) return NaN;
@@ -45,12 +47,7 @@ const parsePrice = (v: unknown): number => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-  if (v === null || v === undefined) return NaN;
-  const s = toHalf(String(v)).replace(/[,円]/g, "");
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-};
-const uid = () => Math.random().toString(36).slice(2);
+const uid = (): string => Math.random().toString(36).slice(2);
 
 // ---------- ストレージ ----------
 const LS_KEY = "card-quiz-v1";
